@@ -1,12 +1,22 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { ApiService } from './api.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App {
-  protected title = 'my-app';
+export class AppComponent implements OnInit {
+  healthStatus = '';
+
+  constructor(private apiService: ApiService) { }
+
+  ngOnInit() {
+    this.apiService.getHealth().subscribe({
+      next: (res) => this.healthStatus = res.status,
+      error: (err) => this.healthStatus = 'Error: ' + err.message
+    });
+  }
 }
