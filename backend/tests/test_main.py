@@ -1,9 +1,10 @@
-import os
 import sys
+from pathlib import Path
 from fastapi.testclient import TestClient
 from main import app
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the parent directory to Python path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 client = TestClient(app)
 
 
