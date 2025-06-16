@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { ApiService } from './api.service';
+import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [],
+  imports: [HttpClientModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
