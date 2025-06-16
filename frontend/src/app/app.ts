@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import { HttpClientModule } from '@angular/common/http';
 
@@ -11,8 +11,7 @@ import { HttpClientModule } from '@angular/common/http';
 })
 export class AppComponent implements OnInit {
   healthStatus = '';
-
-  constructor(private apiService: ApiService) { }
+  private apiService = inject(ApiService);
 
   ngOnInit() {
     this.apiService.getHealth().subscribe({
