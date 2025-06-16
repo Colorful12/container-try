@@ -1,10 +1,13 @@
+# flake8: noqa: E402
 import sys
 from pathlib import Path
+
+# 必ず import 前に path を通す
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fastapi.testclient import TestClient
 from main import app
 
-# Add the parent directory to Python path
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 client = TestClient(app)
 
 
