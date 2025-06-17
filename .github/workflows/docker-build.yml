@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: read
       packages: write # ghcr.io にpushするために必要
-
+    
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push with Compose
-      env:
+        env: 
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           docker compose build
