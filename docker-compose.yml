@@ -5,22 +5,24 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: ghcr.io/${REPO_OWNER}/container-try-backend:latest # GitHub Actionsで自動ビルドする際、どこにビルドするか指定が必要
     ports:
       - "8000:8000"
     environment:
       - CORS_ORIGINS=http://frontend:4200 # backendコンテナから見たfrontendコンテナの名前
-    volumes:
-      - ./backend:/app
+    # volumes:
+    #   - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: ghcr.io/${REPO_OWNER}/container-try-frontend:latest # GitHub Actionsで自動ビルドする際、どこにビルドするか指定が必要
     ports:
       - "4200:4200"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
     environment:
       - NODE_ENV=development
