@@ -28,5 +28,6 @@ jobs:
         env: 
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
+          REPO_OWNER_LOWER=$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
           docker compose build
           docker compose push
