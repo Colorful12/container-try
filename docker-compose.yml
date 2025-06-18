@@ -9,7 +9,7 @@ services:
     environment:
       - CORS_ORIGINS=http://frontend:4200 # backendコンテナから見たfrontendコンテナの名前
     # volumes:
-    #   - ./backend:/app
+    #   - ./backend:/appq
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:

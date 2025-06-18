@@ -17,6 +17,12 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -27,6 +33,7 @@ jobs:
       - name: Build and push with Compose
         env: 
           REPO_OWNER: ${{ github.repository_owner }}
+          DOCKER_DEFAULT_PLATFORM: linux/arm64
         run: |
-          docker compose build --platform linux/arm64
+          docker compose build
           docker compose push
