@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/colorful12/container-try
+    targetRevision: main
+    path: manifests/frontend
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: taki
+  syncPolicy:
+    automated: {} 
