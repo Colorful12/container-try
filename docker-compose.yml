@@ -3,7 +3,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      platform: linux/arm64
     image: ghcr.io/colorful12/container-try-backend:latest # GitHub Actionsで自動ビルドする際、どこにビルドするか指定が必要
     ports:
       - "8000:8000"
@@ -17,7 +16,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      platform: linux/arm64
     image: ghcr.io/colorful12/container-try-frontend:latest # GitHub Actionsで自動ビルドする際、どこにビルドするか指定が必要
     ports:
       - "4200:4200"

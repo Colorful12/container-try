@@ -28,5 +28,5 @@ jobs:
         env: 
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          docker compose build
+          docker compose build --platform linux/arm64
           docker compose push
