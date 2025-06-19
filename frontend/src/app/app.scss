@@ -15,14 +15,23 @@ h1 {
 .controls {
     margin-bottom: 20px;
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.button-row {
+    display: flex;
     justify-content: center;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
     flex-wrap: wrap;
 }
 
 .add-cat-btn,
-.add-cats-btn {
+.add-cats-btn,
+.load-test-btn,
+.extreme-btn {
     padding: 12px 24px;
     font-size: 16px;
     border: none;
@@ -44,8 +53,22 @@ h1 {
     box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
 }
 
+.load-test-btn {
+    background: linear-gradient(45deg, #FFA726, #FF7043);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 167, 38, 0.3);
+}
+
+.extreme-btn {
+    background: linear-gradient(45deg, #F44336, #D32F2F);
+    color: white;
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+}
+
 .add-cat-btn:hover,
-.add-cats-btn:hover {
+.add-cats-btn:hover,
+.load-test-btn:hover,
+.extreme-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
@@ -55,6 +78,7 @@ h1 {
     padding: 15px;
     border-radius: 10px;
     border: 2px solid #e9ecef;
+    text-align: center;
 }
 
 .stats p {

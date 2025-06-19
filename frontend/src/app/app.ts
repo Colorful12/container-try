@@ -78,8 +78,8 @@ export class AppComponent implements OnInit, OnDestroy {
       id: catData.id,
       x: catData.x || Math.random() * 700,
       y: catData.y || Math.random() * 500,
-      vx: (Math.random() - 0.5) * 4,
-      vy: (Math.random() - 0.5) * 4,
+      vx: (Math.random() - 0.5) * 8,
+      vy: (Math.random() - 0.5) * 8,
       size: 30 + Math.random() * 20
     };
     this.cats.push(cat);
@@ -98,6 +98,20 @@ export class AppComponent implements OnInit, OnDestroy {
   addMultipleCats() {
     for (let i = 0; i < 10; i++) {
       setTimeout(() => this.addCat(), i * 100);
+    }
+  }
+
+  addLoadTestCats() {
+    console.log('🔥 Starting Load Test: 100 cats');
+    for (let i = 0; i < 100; i++) {
+      setTimeout(() => this.addCat(), i * 50); // より速く追加
+    }
+  }
+
+  addExtremeLoadTest() {
+    console.log('💥 Starting Extreme Load Test: 500 cats');
+    for (let i = 0; i < 500; i++) {
+      setTimeout(() => this.addCat(), i * 20); // 非常に速く追加
     }
   }
 
@@ -131,31 +145,33 @@ export class AppComponent implements OnInit, OnDestroy {
       // キャンバスクリア
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 重力と物理演算
-      const gravity = 0.2;
-      const friction = 0.98;
-      const bounce = 0.7;
+      // 物理演算（重力なし、完全反射、エネルギー保存）
+      const friction = 1.0;   // 摩擦なし（エネルギー完全保存）
+      const bounce = 1.0;     // 完全反射
 
       this.cats.forEach(cat => {
-        // 重力適用
-        cat.vy += gravity;
-
         // 速度更新
         cat.x += cat.vx;
         cat.y += cat.vy;
 
-        // 摩擦
-        cat.vx *= friction;
-        cat.vy *= friction;
+        // 摩擦なし（エネルギー完全保存）
+        // cat.vx *= friction;  // コメントアウト
+        // cat.vy *= friction;  // コメントアウト
 
-        // 境界チェック
-        if (cat.x <= 0 || cat.x >= canvas.width - cat.size) {
-          cat.vx *= -bounce;
-          cat.x = Math.max(0, Math.min(canvas.width - cat.size, cat.x));
+        // 境界チェックと完全反射
+        if (cat.x <= 0) {
+          cat.vx = Math.abs(cat.vx) * bounce; // 右向きに反射
+          cat.x = 0;
+        } else if (cat.x >= canvas.width - cat.size) {
+          cat.vx = -Math.abs(cat.vx) * bounce; // 左向きに反射
+          cat.x = canvas.width - cat.size;
         }
 
-        if (cat.y >= canvas.height - cat.size) {
-          cat.vy *= -bounce;
+        if (cat.y <= 0) {
+          cat.vy = Math.abs(cat.vy) * bounce; // 下向きに反射
+          cat.y = 0;
+        } else if (cat.y >= canvas.height - cat.size) {
+          cat.vy = -Math.abs(cat.vy) * bounce; // 上向きに反射
           cat.y = canvas.height - cat.size;
         }
 
