@@ -14,6 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # WebSocket接続管理
 class ConnectionManager:
     def __init__(self):
@@ -33,15 +34,18 @@ class ConnectionManager:
         for connection in self.active_connections:
             try:
                 await connection.send_text(message)
-            except:
+            except Exception:
                 # 接続が切れた場合は削除
                 self.active_connections.remove(connection)
 
+
 manager = ConnectionManager()
+
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -50,7 +54,6 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            
             if message.get("type") == "ADD_CAT":
                 # 新しい猫を生成して全クライアントに通知
                 cat_data = {
@@ -62,6 +65,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await manager.broadcast(json.dumps(cat_data))
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
 
 @app.post("/add-cat")
 async def add_cat():
