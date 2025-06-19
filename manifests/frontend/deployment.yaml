@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/colorful12/container-try-frontend
+          image: frontend
           ports:
             - containerPort: 4200
           livenessProbe:
