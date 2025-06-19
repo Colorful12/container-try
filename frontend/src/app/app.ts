@@ -2,6 +2,12 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, inject } from '@an
 import { ApiService } from './api.service';
 import { HttpClientModule } from '@angular/common/http';
 
+interface CatData {
+  id: string;
+  x?: number;
+  y?: number;
+}
+
 interface Cat {
   id: string;
   x: number;
@@ -73,7 +79,7 @@ export class AppComponent implements OnInit, OnDestroy {
     };
   }
 
-  private addCatToCanvas(catData: any) {
+  private addCatToCanvas(catData: CatData) {
     const cat: Cat = {
       id: catData.id,
       x: catData.x || Math.random() * 700,
@@ -146,7 +152,6 @@ export class AppComponent implements OnInit, OnDestroy {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // 物理演算（重力なし、完全反射、エネルギー保存）
-      const friction = 1.0;   // 摩擦なし（エネルギー完全保存）
       const bounce = 1.0;     // 完全反射
 
       this.cats.forEach(cat => {
