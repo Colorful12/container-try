@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ghcr.io/colorful12/container-try-backend:latest
+          image: ghcr.io/colorful12/container-try-backend:v1.0.1
           ports:
             - containerPort: 8000
           livenessProbe:
