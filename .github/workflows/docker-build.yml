@@ -30,10 +30,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generate version tag
+        id: version
+        run: |
+          # セマンティックバージョニングに準拠
+          # コミット数からパッチバージョンを生成
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          VERSION="v1.0.${COMMIT_COUNT}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
+
       - name: Build and push with Compose
         env: 
           REPO_OWNER: ${{ github.repository_owner }}
           DOCKER_DEFAULT_PLATFORM: linux/arm64
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
+          # 通常のビルド
           docker compose build
-          docker compose push
+          
+          # セマンティックバージョニングのタグを付けてpush
+          docker tag ghcr.io/colorful12/container-try-frontend:latest ghcr.io/colorful12/container-try-frontend:${VERSION}
+          docker tag ghcr.io/colorful12/container-try-backend:latest ghcr.io/colorful12/container-try-backend:${VERSION}
+          
+          # 両方のタグをpush
+          docker push ghcr.io/colorful12/container-try-frontend:latest
+          docker push ghcr.io/colorful12/container-try-frontend:${VERSION}
+          docker push ghcr.io/colorful12/container-try-backend:latest
+          docker push ghcr.io/colorful12/container-try-backend:${VERSION}
+          
+          echo "Pushed images with tags: latest and ${VERSION}"

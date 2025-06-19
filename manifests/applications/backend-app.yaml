@@ -5,8 +5,9 @@ metadata:
   namespace: argocd
   annotations:
     argocd-image-updater.argoproj.io/image-list: backend=ghcr.io/colorful12/container-try-backend
-    argocd-image-updater.argoproj.io/backend.update-strategy: semver:1.x
+    argocd-image-updater.argoproj.io/backend.update-strategy: latest
     argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^v1\.0\.
 spec:
   project: default
   source:
