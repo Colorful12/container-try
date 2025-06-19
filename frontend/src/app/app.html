@@ -1,2 +1,19 @@
-<h1>Health Check</h1>
-<p>Status: {{ healthStatus }}</p>
+<div class="container">
+    <h1>🐱 Bouncing Cats 🐱</h1>
+
+    <div class="controls">
+        <button (click)="addCat()" class="add-cat-btn">🐱 Add Cat!</button>
+        <button (click)="addMultipleCats()" class="add-cats-btn">🐱🐱🐱 Add 10 Cats!</button>
+        <div class="stats">
+            <p>Cats: {{ cats.length }}</p>
+            <p>FPS: {{ fps }}</p>
+        </div>
+    </div>
+
+    <canvas #canvas width="800" height="600" class="cat-canvas" (click)="addCatAtPosition($event)">
+    </canvas>
+
+    <div class="health-status">
+        <p>Backend Status: {{ healthStatus }}</p>
+    </div>
+</div>
