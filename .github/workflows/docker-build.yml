@@ -34,9 +34,7 @@ jobs:
         id: version
         run: |
           # セマンティックバージョニングに準拠
-          # コミット数からパッチバージョンを生成
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          VERSION="v1.0.${COMMIT_COUNT}"
+          VERSION="v1.0.${GITHUB_RUN_NUMBER}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Generated version: ${VERSION}"
 
