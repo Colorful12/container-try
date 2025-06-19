@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: backend-app
   namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: backend=ghcr.io/colorful12/container-try-backend
+    argocd-image-updater.argoproj.io/backend.update-strategy: semver:1.x
+    argocd-image-updater.argoproj.io/write-back-method: git
 spec:
   project: default
   source:
