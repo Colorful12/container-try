@@ -1,5 +1,6 @@
-resources:
+resources: # ArgoCDの監視対象にするファイル
   - deployment.yaml
+  - hpa.yaml
 
 images:
   - name: backend
