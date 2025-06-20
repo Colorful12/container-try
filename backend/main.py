@@ -44,7 +44,7 @@ manager = ConnectionManager()
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok?"}
+    return {"status": "ok??"}
 
 
 @app.websocket("/ws")
