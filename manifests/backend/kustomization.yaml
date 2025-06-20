@@ -1,0 +1,7 @@
+resources:
+  - deployment.yaml
+
+images:
+  - name: backend
+    newName: ghcr.io/colorful12/container-try-backend
+    newTag: v1.0.20
