@@ -1,5 +1,8 @@
 FROM python:3.13.4-slim
 
+# タイムゾーンを日本時間に設定
+ENV TZ=Asia/Tokyo
+
 # 作業ディレクトリ作成
 WORKDIR /app
 

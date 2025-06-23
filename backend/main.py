@@ -5,11 +5,15 @@ import json
 import uuid
 import random
 import logging
+import os
+# タイムゾーンを日本時間に設定
+os.environ['TZ'] = 'Asia/Tokyo'
 
 # ログ設定
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s JST - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
 
