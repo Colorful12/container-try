@@ -38,23 +38,63 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Generated version: ${VERSION}"
 
-      - name: Build and push with Compose
+      - name: Build and push optimized
+        id: build
         env: 
           REPO_OWNER: ${{ github.repository_owner }}
           DOCKER_DEFAULT_PLATFORM: linux/arm64
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # 通常のビルド
-          docker compose build
+          echo "Starting optimized build with GitHub Actions cache..."
           
-          # セマンティックバージョニングのタグを付けてpush
-          docker tag ghcr.io/colorful12/container-try-frontend:latest ghcr.io/colorful12/container-try-frontend:${VERSION}
-          docker tag ghcr.io/colorful12/container-try-backend:latest ghcr.io/colorful12/container-try-backend:${VERSION}
+          # ビルド開始時刻を記録
+          BUILD_START=$(date +%s)
           
-          # 両方のタグをpush
-          docker push ghcr.io/colorful12/container-try-frontend:latest
-          docker push ghcr.io/colorful12/container-try-frontend:${VERSION}
-          docker push ghcr.io/colorful12/container-try-backend:latest
-          docker push ghcr.io/colorful12/container-try-backend:${VERSION}
+          # BuildKitで最適化されたバックエンドビルド（キャッシュ使用）
+          DOCKER_BUILDKIT=1 docker buildx build \
+            --progress=plain \
+            --cache-from=type=gha \
+            --cache-to=type=gha,mode=max \
+            -t ghcr.io/colorful12/container-try-backend:latest \
+            -t ghcr.io/colorful12/container-try-backend:${VERSION} \
+            --push \
+            ./backend
           
+          if [ $? -ne 0 ]; then
+            echo "Backend build failed"
+            exit 1
+          fi
+          
+          # BuildKitで最適化されたフロントエンドビルド（キャッシュ使用）
+          DOCKER_BUILDKIT=1 docker buildx build \
+            --progress=plain \
+            --cache-from=type=gha \
+            --cache-to=type=gha,mode=max \
+            -t ghcr.io/colorful12/container-try-frontend:latest \
+            -t ghcr.io/colorful12/container-try-frontend:${VERSION} \
+            --push \
+            ./frontend
+          
+          if [ $? -ne 0 ]; then
+            echo "Frontend build failed"
+            exit 1
+          fi
+          
+          # ビルド終了時刻を記録
+          BUILD_END=$(date +%s)
+          BUILD_DURATION=$((BUILD_END - BUILD_START))
+          
+          echo "build_duration=${BUILD_DURATION}" >> $GITHUB_OUTPUT
+          echo "Optimized build completed in ${BUILD_DURATION} seconds"
           echo "Pushed images with tags: latest and ${VERSION}"
+
+      - name: Build summary
+        if: success()
+        run: |
+          echo "## Optimized Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Build completed successfully with optimization" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend and Frontend images built and pushed" >> $GITHUB_STEP_SUMMARY
+          echo "- Build duration: ${{ steps.build.outputs.build_duration }} seconds" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Used GitHub Actions cache for faster builds" >> $GITHUB_STEP_SUMMARY
+          echo "- BuildKit optimization enabled" >> $GITHUB_STEP_SUMMARY
