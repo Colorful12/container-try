@@ -8,7 +8,7 @@ ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 # 依存関係をコピー＆インストール（最適化版）
 COPY package*.json ./
-RUN npm ci --only=production --cache /tmp/npm-cache && \
+RUN npm ci --cache /tmp/npm-cache && \
     npm cache clean --force
 
 # ソースコードコピー
