@@ -1,13 +1,29 @@
 # Node.js公式イメージを使用
-FROM node:22.15.1
+FROM node:22.15.1 AS builder
 
 WORKDIR /app
 
-# 依存関係をコピー＆インストール
+# npm キャッシュディレクトリを設定
+ENV NPM_CONFIG_CACHE=/tmp/npm-cache
+
+# 依存関係をコピー＆インストール（最適化版）
 COPY package*.json ./
-RUN npm install
+RUN npm ci --only=production --cache /tmp/npm-cache && \
+    npm cache clean --force
 
 # ソースコードコピー
+COPY . .
+
+# 本番用イメージ
+FROM node:22.15.1-slim
+
+WORKDIR /app
+
+# 依存関係のみをコピー
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
+# アプリケーションコードをコピー
 COPY . .
 
 # 開発サーバーを起動
