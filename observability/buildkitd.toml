@@ -1,0 +1,15 @@
+# BuildKit設定
+
+[grpc]
+address = ["tcp://0.0.0.0:1234"]
+
+[worker.oci]
+enabled = true
+
+[worker.containerd]
+enabled = false
+
+# デバッグ用ログ設定
+[log]
+level = "debug"
+format = "text" 
