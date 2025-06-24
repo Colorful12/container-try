@@ -114,3 +114,8 @@ jobs:
         run: |
           echo "✅ Cached layers:"
           find .buildx-cache -type f | head -n 20
+          
+      - name: Inspect npm cache directory
+        run: |
+          echo "✅ NPM cache:"
+          find ~/.npm -type f | head -n 20
