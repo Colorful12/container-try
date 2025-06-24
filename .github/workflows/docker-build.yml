@@ -113,4 +113,4 @@ jobs:
       - name: Inspect buildx cache directory
         run: |
           echo "✅ Cached layers:"
-          find /tmp/.buildx-cache -type f | head -n 20
+          find .buildx-cache -type f | head -n 20
