@@ -30,6 +30,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ベースイメージの事前プル（キャッシュ効率化）
+      - name: Pull base images
+        run: |
+          docker pull python:3.13.4-slim
+          docker pull node:22.15.1
+          echo "Base images pulled successfully"
+
+      # Docker Buildx キャッシュの設定（修正版）
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: .buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # 依存関係のキャッシュ（バックエンド）
+      - name: Cache backend dependencies
+        uses: actions/cache@v3
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-backend-deps-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-backend-deps-
+
+      # 依存関係のキャッシュ（フロントエンド）
+      - name: Cache frontend dependencies
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-deps-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-deps-
+
       - name: Generate version tag
         id: version
         run: |
@@ -38,23 +72,32 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Generated version: ${VERSION}"
 
-      - name: Build and push with Compose
+      # 最適化されたビルド（キャッシュ活用 + --push追加）
+      - name: Build and push with Compose (Optimized)
         env: 
           REPO_OWNER: ${{ github.repository_owner }}
           DOCKER_DEFAULT_PLATFORM: linux/arm64
           VERSION: ${{ steps.version.outputs.version }}
+          BUILDKIT_INLINE_CACHE: 1
         run: |
-          # 通常のビルド
-          docker compose build
+          # Buildx キャッシュを使用したビルド（修正版）
+          docker buildx build \
+            --cache-from type=local,src=.buildx-cache \
+            --cache-to type=local,dest=.buildx-cache,mode=max \
+            --platform linux/arm64 \
+            --push \
+            -t ghcr.io/colorful12/container-try-backend:latest \
+            -t ghcr.io/colorful12/container-try-backend:${VERSION} \
+            ./backend
           
-          # セマンティックバージョニングのタグを付けてpush
-          docker tag ghcr.io/colorful12/container-try-frontend:latest ghcr.io/colorful12/container-try-frontend:${VERSION}
-          docker tag ghcr.io/colorful12/container-try-backend:latest ghcr.io/colorful12/container-try-backend:${VERSION}
+          docker buildx build \
+            --cache-from type=local,src=.buildx-cache \
+            --cache-to type=local,dest=.buildx-cache,mode=max \
+            --platform linux/arm64 \
+            --push \
+            -t ghcr.io/colorful12/container-try-frontend:latest \
+            -t ghcr.io/colorful12/container-try-frontend:${VERSION} \
+            ./frontend
           
-          # 両方のタグをpush
-          docker push ghcr.io/colorful12/container-try-frontend:latest
-          docker push ghcr.io/colorful12/container-try-frontend:${VERSION}
-          docker push ghcr.io/colorful12/container-try-backend:latest
-          docker push ghcr.io/colorful12/container-try-backend:${VERSION}
-          
+          echo "Build and push completed with cache optimization!"
           echo "Pushed images with tags: latest and ${VERSION}"
