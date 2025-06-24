@@ -60,7 +60,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.ws = new WebSocket('ws://localhost:8000/ws');
 
     this.ws.onopen = () => {
-      console.log('WebSocket connected');
+      console.log('【taki】WebSocket connected');
     };
 
     this.ws.onmessage = (event) => {
@@ -71,11 +71,11 @@ export class AppComponent implements OnInit, OnDestroy {
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error('【taki】WebSocket error:', error);
     };
 
     this.ws.onclose = () => {
-      console.log('WebSocket disconnected');
+      console.log('【taki】WebSocket disconnected');
     };
   }
 
@@ -108,14 +108,14 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   addLoadTestCats() {
-    console.log('🔥 Starting Load Test: 100 cats');
+    console.log('【taki】🔥 Starting Load Test: 100 cats');
     for (let i = 0; i < 100; i++) {
       setTimeout(() => this.addCat(), i * 50); // より速く追加
     }
   }
 
   addExtremeLoadTest() {
-    console.log('💥 Starting Extreme Load Test: 500 cats');
+    console.log('【taki】💥 Starting Extreme Load Test: 500 cats');
     for (let i = 0; i < 500; i++) {
       setTimeout(() => this.addCat(), i * 20); // 非常に速く追加
     }

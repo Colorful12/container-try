@@ -26,7 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logger.info("Backend application starting up")
+logger.info("【taki】Backend application starting up", extra={
+    "event_type": "app_startup",
+    "service": "backend"
+})
 
 
 class ConnectionManager:
@@ -37,15 +40,23 @@ class ConnectionManager:
         await websocket.accept()
         self.active_connections.append(websocket)
         logger.info(
-            f"WebSocket connection established. "
-            f"Total connections: {len(self.active_connections)}"
+            "【taki】WebSocket connection established",
+            extra={
+                "event_type": "websocket_connect",
+                "total_connections": len(self.active_connections),
+                "service": "backend"
+            }
         )
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
         logger.info(
-            f"WebSocket connection disconnected. "
-            f"Total connections: {len(self.active_connections)}"
+            "【taki】WebSocket connection disconnected",
+            extra={
+                "event_type": "websocket_disconnect",
+                "total_connections": len(self.active_connections),
+                "service": "backend"
+            }
         )
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
@@ -58,7 +69,14 @@ class ConnectionManager:
             except Exception as e:
                 # 接続が切れた場合は削除
                 self.active_connections.remove(connection)
-                logger.error(f"Failed to send message to WebSocket: {e}")
+                logger.error(
+                    "【taki】Failed to send message to WebSocket",
+                    extra={
+                        "event_type": "websocket_error",
+                        "error": str(e),
+                        "service": "backend"
+                    }
+                )
 
 
 manager = ConnectionManager()
@@ -66,7 +84,10 @@ manager = ConnectionManager()
 
 @app.get("/health")
 def health_check():
-    logger.info("Health check endpoint called")
+    logger.info("【taki】Health check endpoint called", extra={
+        "event_type": "health_check",
+        "service": "backend"
+    })
     return {"status": "ok"}
 
 
@@ -77,7 +98,15 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            logger.info(f"Received WebSocket message: {message}")
+            logger.info(
+                "【taki】Received WebSocket message",
+                extra={
+                    "event_type": "websocket_message",
+                    "message_type": message.get("type"),
+                    "message_data": message,
+                    "service": "backend"
+                }
+            )
             if message.get("type") == "ADD_CAT":
                 cat_data = {
                     "type": "NEW_CAT",
@@ -85,13 +114,31 @@ async def websocket_endpoint(websocket: WebSocket):
                     "x": message.get("x", 100),
                     "y": message.get("y", 100)
                 }
-                logger.info(f"Adding new cat: {cat_data}")
+                logger.info(
+                    "【taki】Adding new cat",
+                    extra={
+                        "event_type": "cat_added",
+                        "cat_id": cat_data["id"],
+                        "cat_position": {"x": cat_data["x"], "y": cat_data["y"]},
+                        "service": "backend"
+                    }
+                )
                 await manager.broadcast(json.dumps(cat_data))
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        logger.info("WebSocket client disconnected")
+        logger.info("【taki】WebSocket client disconnected", extra={
+            "event_type": "websocket_disconnect",
+            "service": "backend"
+        })
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(
+            "【taki】WebSocket error",
+            extra={
+                "event_type": "websocket_error",
+                "error": str(e),
+                "service": "backend"
+            }
+        )
         manager.disconnect(websocket)
 
 
@@ -104,11 +151,22 @@ async def add_cat():
         "x": random.randint(50, 750),  # ランダムなX座標
         "y": random.randint(50, 550)   # ランダムなY座標
     }
-    logger.info(f"Adding cat via REST API: {cat_data}")
+    logger.info(
+        "【taki】Adding cat via REST API",
+        extra={
+            "event_type": "cat_added_rest",
+            "cat_id": cat_data["id"],
+            "cat_position": {"x": cat_data["x"], "y": cat_data["y"]},
+            "service": "backend"
+        }
+    )
     await manager.broadcast(json.dumps(cat_data))
     return {"message": "Cat added", "cat": cat_data}
 
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Backend application started successfully")
+    logger.info("【taki】Backend application started successfully", extra={
+        "event_type": "app_startup_complete",
+        "service": "backend"
+    })
