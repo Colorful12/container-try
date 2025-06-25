@@ -43,7 +43,11 @@ def setup_otel():
     otlp_endpoint = os.getenv(
         "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318"
     )
-    otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+    # OTLPエクスポーターには完全なエンドポイントURL（/v1/tracesを含む）を指定
+    full_endpoint = f"{otlp_endpoint}/v1/traces"
+    otlp_exporter = OTLPSpanExporter(endpoint=full_endpoint)
+    
+    logger.info(f"【taki】OTLP exporter configured with endpoint: {full_endpoint}")
 
     # BatchSpanProcessorでエクスポーターを追加
     provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
