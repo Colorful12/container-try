@@ -3,3 +3,6 @@ uvicorn[standard]
 pytest
 httpx
 websockets
+opentelemetry-distro
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-logging

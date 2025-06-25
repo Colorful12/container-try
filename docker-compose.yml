@@ -8,8 +8,12 @@ services:
       - "8000:8000"
     environment:
       - CORS_ORIGINS=http://frontend:4200 # backendコンテナから見たfrontendコンテナの名前
-    # volumes:
-    #   - ./backend:/appq
+      - OTEL_SERVICE_NAME=backend
+      - OTEL_RESOURCE_ATTRIBUTES=service.version=1.0.0,deployment.environment=development
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
+      - DD_API_KEY=${DATADOG_API_KEY:-}
+      - DD_ENV=${DATADOG_ENVIRONMENT:-development}
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -19,8 +23,5 @@ services:
     image: ghcr.io/colorful12/container-try-frontend:latest # GitHub Actionsで自動ビルドする際、どこにビルドするか指定が必要
     ports:
       - "4200:4200"
-    # volumes:
-    #   - ./frontend:/app
-    #   - /app/node_modules
     environment:
       - NODE_ENV=development

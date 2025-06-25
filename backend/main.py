@@ -6,6 +6,9 @@ import uuid
 import random
 import logging
 import os
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
 # タイムゾーンを日本時間に設定
 os.environ['TZ'] = 'Asia/Tokyo'
 
@@ -25,6 +28,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# FastAPI自動計装 （自動で監視機能を追加する, HTTPリクエストのトレースを自動で行う）
+FastAPIInstrumentor.instrument_app(app)
+
+# トレーサーを取得
+tracer = trace.get_tracer(__name__) # トレーサー名をモジュール名に設定
 
 logger.info("【taki】Backend application starting up", extra={
     "event_type": "app_startup",
@@ -93,75 +102,117 @@ def health_check():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            message = json.loads(data)
-            logger.info(
-                "【taki】Received WebSocket message",
+    with tracer.start_as_current_span("websocket_connection") as span:
+        span.set_attribute("websocket.endpoint", "/ws")
+        span.set_attribute("websocket.protocol", "ws")
+        
+        await manager.connect(websocket)
+        try:
+            while True:
+                with tracer.start_as_current_span("websocket_message_processing") as msg_span:
+                    data = await websocket.receive_text()
+                    message = json.loads(data)
+                    
+                    msg_span.set_attribute("message.type", message.get("type"))
+                    msg_span.set_attribute("message.data", json.dumps(message))
+                    
+                    logger.info(
+                        "【taki】Received WebSocket message",
+                        extra={
+                            "event_type": "websocket_message",
+                            "message_type": message.get("type"),
+                            "message_data": message,
+                            "service": "backend"
+                        }
+                    )
+                    
+                    if message.get("type") == "ADD_CAT":
+                        with tracer.start_as_current_span("cat_creation") as cat_span:
+                            cat_span.set_attribute("cat.operation", "add")
+                            cat_span.set_attribute("cat.position.x", message.get("x", 100))
+                            cat_span.set_attribute("cat.position.y", message.get("y", 100))
+                            
+                            cat_data = {
+                                "type": "NEW_CAT",
+                                "id": str(uuid.uuid4()),
+                                "x": message.get("x", 100),
+                                "y": message.get("y", 100)
+                            }
+                            
+                            cat_span.set_attribute("cat.id", cat_data["id"])
+                            
+                            logger.info(
+                                "【taki】Adding new cat",
+                                extra={
+                                    "event_type": "cat_added",
+                                    "cat_id": cat_data["id"],
+                                    "cat_position": {"x": cat_data["x"], "y": cat_data["y"]},
+                                    "service": "backend"
+                                }
+                            )
+                            
+                            with tracer.start_as_current_span("broadcast_message") as broadcast_span:
+                                broadcast_span.set_attribute("broadcast.recipients", len(manager.active_connections))
+                                await manager.broadcast(json.dumps(cat_data))
+        except WebSocketDisconnect:
+            span.set_attribute("websocket.disconnect_reason", "client_disconnect")
+            manager.disconnect(websocket)
+            logger.info("【taki】WebSocket client disconnected", extra={
+                "event_type": "websocket_disconnect",
+                "service": "backend"
+            })
+        except Exception as e:
+            span.set_attribute("websocket.error", str(e))
+            span.record_exception(e)
+            logger.error(
+                "【taki】WebSocket error",
                 extra={
-                    "event_type": "websocket_message",
-                    "message_type": message.get("type"),
-                    "message_data": message,
+                    "event_type": "websocket_error",
+                    "error": str(e),
                     "service": "backend"
                 }
             )
-            if message.get("type") == "ADD_CAT":
-                cat_data = {
-                    "type": "NEW_CAT",
-                    "id": str(uuid.uuid4()),
-                    "x": message.get("x", 100),
-                    "y": message.get("y", 100)
-                }
-                logger.info(
-                    "【taki】Adding new cat",
-                    extra={
-                        "event_type": "cat_added",
-                        "cat_id": cat_data["id"],
-                        "cat_position": {"x": cat_data["x"], "y": cat_data["y"]},
-                        "service": "backend"
-                    }
-                )
-                await manager.broadcast(json.dumps(cat_data))
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        logger.info("【taki】WebSocket client disconnected", extra={
-            "event_type": "websocket_disconnect",
-            "service": "backend"
-        })
-    except Exception as e:
-        logger.error(
-            "【taki】WebSocket error",
-            extra={
-                "event_type": "websocket_error",
-                "error": str(e),
-                "service": "backend"
-            }
-        )
-        manager.disconnect(websocket)
+            manager.disconnect(websocket)
 
 
 @app.post("/add-cat")
 async def add_cat():
-    # REST APIでも猫を追加できるように
-    cat_data = {
-        "type": "NEW_CAT",
-        "id": str(uuid.uuid4()),
-        "x": random.randint(50, 750),  # ランダムなX座標
-        "y": random.randint(50, 550)   # ランダムなY座標
-    }
-    logger.info(
-        "【taki】Adding cat via REST API",
-        extra={
-            "event_type": "cat_added_rest",
-            "cat_id": cat_data["id"],
-            "cat_position": {"x": cat_data["x"], "y": cat_data["y"]},
-            "service": "backend"
-        }
-    )
-    await manager.broadcast(json.dumps(cat_data))
-    return {"message": "Cat added", "cat": cat_data}
+    with tracer.start_as_current_span("rest_add_cat") as span:
+        span.set_attribute("api.endpoint", "/add-cat")
+        span.set_attribute("api.method", "POST")
+        
+        # REST APIでも猫を追加できるように
+        with tracer.start_as_current_span("cat_generation") as gen_span:
+            x_pos = random.randint(50, 750)
+            y_pos = random.randint(50, 550)
+            
+            gen_span.set_attribute("cat.position.x", x_pos)
+            gen_span.set_attribute("cat.position.y", y_pos)
+            
+            cat_data = {
+                "type": "NEW_CAT",
+                "id": str(uuid.uuid4()),
+                "x": x_pos,  # ランダムなX座標
+                "y": y_pos   # ランダムなY座標
+            }
+            
+            span.set_attribute("cat.id", cat_data["id"])
+            
+            logger.info(
+                "【taki】Adding cat via REST API",
+                extra={
+                    "event_type": "cat_added_rest",
+                    "cat_id": cat_data["id"],
+                    "cat_position": {"x": cat_data["x"], "y": cat_data["y"]},
+                    "service": "backend"
+                }
+            )
+            
+            with tracer.start_as_current_span("broadcast_message") as broadcast_span:
+                broadcast_span.set_attribute("broadcast.recipients", len(manager.active_connections))
+                await manager.broadcast(json.dumps(cat_data))
+            
+            return {"message": "Cat added", "cat": cat_data}
 
 
 @app.on_event("startup")
