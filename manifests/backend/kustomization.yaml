@@ -1,4 +1,5 @@
 resources: # ArgoCDの監視対象にするファイル
+  - datadog-secret.yaml
   - deployment.yaml
   - hpa.yaml
 
