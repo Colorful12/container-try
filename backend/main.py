@@ -8,6 +8,10 @@ import logging
 import os
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
 
 # タイムゾーンを日本時間に設定
 os.environ['TZ'] = 'Asia/Tokyo'
@@ -19,6 +23,33 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+# OTel初期化
+def setup_otel():
+    # リソース設定
+    resource = Resource.create({
+        "service.name": os.getenv("OTEL_SERVICE_NAME", "backend"),
+        "service.version": "1.0.0",
+        "deployment.environment": os.getenv("DD_ENV", "production")
+    })
+    
+    # TracerProvider設定
+    provider = TracerProvider(resource=resource)
+    
+    # OTLPエクスポーター設定
+    otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+    otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+    
+    # BatchSpanProcessorでエクスポーターを追加
+    provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    
+    # グローバルTracerProviderを設定
+    trace.set_tracer_provider(provider)
+    
+    logger.info(f"【taki】OTel initialized with endpoint: {otlp_endpoint}")
+
+# OTel初期化を実行
+setup_otel()
 
 app = FastAPI()
 app.add_middleware(
