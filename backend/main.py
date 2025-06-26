@@ -184,6 +184,31 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "cat.position.y", message.get("y", 100)
                             )
 
+                            if random.random() < 0.3:
+                                error_message = "Intentional WebSocket 500 error for chaos testing"
+                                cat_span.set_attribute("error.intentional", True)
+                                cat_span.set_attribute("error.message", error_message)
+                                cat_span.record_exception(Exception(error_message))
+                                
+                                logger.error(
+                                    "【taki】Intentional WebSocket 500 error triggered",
+                                    extra={
+                                        "event_type": "intentional_websocket_error",
+                                        "error_type": "500_error",
+                                        "error_message": error_message,
+                                        "service": "backend"
+                                    }
+                                )
+                                
+                                error_response = {
+                                    "type": "ERROR",
+                                    "error": "Internal Server Error",
+                                    "message": error_message,
+                                    "chaos_testing": True
+                                }
+                                await websocket.send_text(json.dumps(error_response))
+                                continue
+
                             cat_data = {
                                 "type": "NEW_CAT",
                                 "id": str(uuid.uuid4()),

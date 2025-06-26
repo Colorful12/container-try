@@ -24,12 +24,18 @@ class MemoryHog {
 
   constructor(id: string) {
     this.id = id;
-    // 1MBのデータを生成（メモリリーク用）
-    this.data = new Array(100000).fill('A').map((_, i) => ({
+    // 10MBのデータを生成（メモリリーク用）
+    this.data = new Array(1000000).fill('A').map((_, i) => ({
       id: `${id}_${i}`,
-      data: 'X'.repeat(10), // 10文字の文字列
+      data: 'X'.repeat(100), // 100文字の文字列
       timestamp: Date.now(),
-      index: i
+      index: i,
+      metadata: {
+        x: Math.random() * 1000,
+        y: Math.random() * 1000,
+        velocity: Math.random() * 10,
+        size: Math.random() * 50
+      }
     }));
   }
 
@@ -89,7 +95,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     setInterval(() => {
       this.createMemoryLeak();
-    }, 5000);
+    }, 2000); // 2秒ごとにメモリリーク
   }
 
   private createMemoryLeak() {
@@ -115,6 +121,9 @@ export class AppComponent implements OnInit, OnDestroy {
       const data = JSON.parse(event.data);
       if (data.type === 'NEW_CAT') {
         this.addCatToCanvas(data);
+      } else if (data.type === 'ERROR') {
+        console.error('【taki】🔥 WebSocket Error:', data);
+        console.log('【taki】💥 Chaos testing: WebSocket 500 error received');
       }
     };
 
