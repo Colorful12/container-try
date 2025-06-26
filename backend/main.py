@@ -156,89 +156,110 @@ async def websocket_endpoint(websocket: WebSocket):
                 with tracer.start_as_current_span(
                     "websocket_message_processing"
                 ) as msg_span:
-                    data = await websocket.receive_text()
-                    message = json.loads(data)
+                    try:
+                        data = await websocket.receive_text()
+                        message = json.loads(data)
 
-                    msg_span.set_attribute("message.type", message.get("type"))
-                    msg_span.set_attribute("message.data", json.dumps(message))
+                        msg_span.set_attribute("message.type", message.get("type"))
+                        msg_span.set_attribute("message.data", json.dumps(message))
 
-                    logger.info(
-                        "【taki】Received WebSocket message",
-                        extra={
-                            "event_type": "websocket_message",
-                            "message_type": message.get("type"),
-                            "message_data": message,
-                            "service": "backend"
-                        }
-                    )
+                        logger.info(
+                            "【taki】Received WebSocket message",
+                            extra={
+                                "event_type": "websocket_message",
+                                "message_type": message.get("type"),
+                                "message_data": message,
+                                "service": "backend"
+                            }
+                        )
 
-                    if message.get("type") == "ADD_CAT":
-                        with tracer.start_as_current_span(
-                            "cat_creation"
-                        ) as cat_span:
-                            cat_span.set_attribute("cat.operation", "add")
-                            cat_span.set_attribute(
-                                "cat.position.x", message.get("x", 100)
-                            )
-                            cat_span.set_attribute(
-                                "cat.position.y", message.get("y", 100)
-                            )
+                        if message.get("type") == "ADD_CAT":
+                            with tracer.start_as_current_span(
+                                "cat_creation"
+                            ) as cat_span:
+                                cat_span.set_attribute("cat.operation", "add")
+                                cat_span.set_attribute(
+                                    "cat.position.x", message.get("x", 100)
+                                )
+                                cat_span.set_attribute(
+                                    "cat.position.y", message.get("y", 100)
+                                )
 
-                            if random.random() < 0.3:
-                                error_message = "Intentional WebSocket 500 error for chaos testing"
-                                cat_span.set_attribute("error.intentional", True)
-                                cat_span.set_attribute("error.message", error_message)
-                                cat_span.record_exception(Exception(error_message))
-                                
-                                logger.error(
-                                    "【taki】Intentional WebSocket 500 error triggered",
+                                if random.random() < 0.3:
+                                    error_message = "Intentional WebSocket 500 error for chaos testing"
+                                    cat_span.set_attribute("error.intentional", True)
+                                    cat_span.set_attribute("error.message", error_message)
+                                    cat_span.record_exception(Exception(error_message))
+                                    
+                                    logger.error(
+                                        "【taki】Intentional WebSocket 500 error triggered",
+                                        extra={
+                                            "event_type": "intentional_websocket_error",
+                                            "error_type": "500_error",
+                                            "error_message": error_message,
+                                            "service": "backend"
+                                        }
+                                    )
+                                    
+                                    error_response = {
+                                        "type": "ERROR",
+                                        "error": "Internal Server Error",
+                                        "message": error_message,
+                                        "chaos_testing": True
+                                    }
+                                    await websocket.send_text(json.dumps(error_response))
+                                    continue
+
+                                cat_data = {
+                                    "type": "NEW_CAT",
+                                    "id": str(uuid.uuid4()),
+                                    "x": message.get("x", 100),
+                                    "y": message.get("y", 100)
+                                }
+
+                                cat_span.set_attribute("cat.id", cat_data["id"])
+
+                                logger.info(
+                                    "【taki】Adding new cat",
                                     extra={
-                                        "event_type": "intentional_websocket_error",
-                                        "error_type": "500_error",
-                                        "error_message": error_message,
+                                        "event_type": "cat_added",
+                                        "cat_id": cat_data["id"],
+                                        "cat_position": {
+                                            "x": cat_data["x"],
+                                            "y": cat_data["y"]
+                                        },
                                         "service": "backend"
                                     }
                                 )
-                                
-                                error_response = {
-                                    "type": "ERROR",
-                                    "error": "Internal Server Error",
-                                    "message": error_message,
-                                    "chaos_testing": True
-                                }
-                                await websocket.send_text(json.dumps(error_response))
-                                continue
 
-                            cat_data = {
-                                "type": "NEW_CAT",
-                                "id": str(uuid.uuid4()),
-                                "x": message.get("x", 100),
-                                "y": message.get("y", 100)
+                                with tracer.start_as_current_span(
+                                    "broadcast_message"
+                                ) as broadcast_span:
+                                    broadcast_span.set_attribute(
+                                        "broadcast.recipients",
+                                        len(manager.active_connections)
+                                    )
+                                    await manager.broadcast(json.dumps(cat_data))
+                    except json.JSONDecodeError as e:
+                        logger.error(
+                            "【taki】JSON decode error in WebSocket message",
+                            extra={
+                                "event_type": "websocket_json_error",
+                                "error_type": "json_decode_error",
+                                "error_message": str(e),
+                                "service": "backend"
                             }
-
-                            cat_span.set_attribute("cat.id", cat_data["id"])
-
-                            logger.info(
-                                "【taki】Adding new cat",
-                                extra={
-                                    "event_type": "cat_added",
-                                    "cat_id": cat_data["id"],
-                                    "cat_position": {
-                                        "x": cat_data["x"],
-                                        "y": cat_data["y"]
-                                    },
-                                    "service": "backend"
-                                }
-                            )
-
-                            with tracer.start_as_current_span(
-                                "broadcast_message"
-                            ) as broadcast_span:
-                                broadcast_span.set_attribute(
-                                    "broadcast.recipients",
-                                    len(manager.active_connections)
-                                )
-                                await manager.broadcast(json.dumps(cat_data))
+                        )
+                    except Exception as e:
+                        logger.error(
+                            "【taki】WebSocket message processing error",
+                            extra={
+                                "event_type": "websocket_processing_error",
+                                "error_type": "message_processing_error",
+                                "error_message": str(e),
+                                "service": "backend"
+                            }
+                        )
         except WebSocketDisconnect:
             span.set_attribute(
                 "websocket.disconnect_reason", "client_disconnect"
