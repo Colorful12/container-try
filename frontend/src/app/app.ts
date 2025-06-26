@@ -17,6 +17,31 @@ interface Cat {
   size: number;
 }
 
+// メモリリーク用のクラス
+class MemoryHog {
+  private data: any[] = [];
+  private id: string;
+
+  constructor(id: string) {
+    this.id = id;
+    // 1MBのデータを生成（メモリリーク用）
+    this.data = new Array(100000).fill('A').map((_, i) => ({
+      id: `${id}_${i}`,
+      data: 'X'.repeat(10), // 10文字の文字列
+      timestamp: Date.now(),
+      index: i
+    }));
+  }
+
+  getSize(): number {
+    return this.data.length;
+  }
+
+  getId(): string {
+    return this.id;
+  }
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -36,6 +61,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private lastTime = 0;
   private frameCount = 0;
   private lastFpsTime = 0;
+  private memoryHogs: MemoryHog[] = [];
+  private memoryLeakCounter = 0;
 
   ngOnInit() {
     this.apiService.getHealth().subscribe({
@@ -45,6 +72,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.initWebSocket();
     this.startAnimation();
+    this.startMemoryLeak();
   }
 
   ngOnDestroy() {
@@ -54,6 +82,26 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
+  }
+
+  private startMemoryLeak() {
+    console.log('【taki】🔥 Starting memory leak simulation');
+
+    setInterval(() => {
+      this.createMemoryLeak();
+    }, 5000);
+  }
+
+  private createMemoryLeak() {
+    this.memoryLeakCounter++;
+    const hog = new MemoryHog(`memory_hog_${this.memoryLeakCounter}`);
+    this.memoryHogs.push(hog);
+
+    console.log(`【taki】💾 Memory leak created: ${hog.getId()} (${hog.getSize()} items)`);
+    console.log(`【taki】📊 Total memory hogs: ${this.memoryHogs.length}`);
+
+    const totalItems = this.memoryHogs.reduce((sum, hog) => sum + hog.getSize(), 0);
+    console.log(`【taki】🧠 Total memory items: ${totalItems.toLocaleString()}`);
   }
 
   private initWebSocket() {
@@ -89,6 +137,7 @@ export class AppComponent implements OnInit, OnDestroy {
       size: 30 + Math.random() * 20
     };
     this.cats.push(cat);
+    this.createMemoryLeak();
   }
 
   addCat() {

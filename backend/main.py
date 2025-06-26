@@ -15,6 +15,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import Resource
 from fastapi import HTTPException
+from datetime import datetime
 
 # タイムゾーンを日本時間に設定
 os.environ['TZ'] = 'Asia/Tokyo'
@@ -61,7 +62,7 @@ def setup_otel():
 # OTel初期化を実行
 setup_otel()
 
-app = FastAPI()
+app = FastAPI(title="Bouncing Cats API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4200"],
@@ -132,13 +133,15 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+@app.get("/")
+async def root():
+    return {"message": "Bouncing Cats API is running!"}
+
+
 @app.get("/health")
-def health_check():
-    logger.info("【taki】Health check endpoint called", extra={
-        "event_type": "health_check",
-        "service": "backend"
-    })
-    return {"status": "ok"}
+async def health():
+    logger.info("【taki】Health check: OK")
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
 @app.websocket("/ws")
