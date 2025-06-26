@@ -45,8 +45,7 @@ def setup_otel():
     )
     # OTLPエクスポーターには完全なエンドポイントURL（/v1/tracesを含む）を指定
     full_endpoint = f"{otlp_endpoint}/v1/traces"
-    otlp_exporter = OTLPSpanExporter(endpoint=full_endpoint)
-    
+    otlp_exporter = OTLPSpanExporter(endpoint=full_endpoint)    
     logger.info(f"【taki】OTLP exporter configured with endpoint: {full_endpoint}")
 
     # BatchSpanProcessorでエクスポーターを追加
