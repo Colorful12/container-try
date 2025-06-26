@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: bouncing-cats-ui
   namespace: taki
   labels:
-    app: frontend
+    app: bouncing-cats-ui
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: frontend
+      app: bouncing-cats-ui
   template:
     metadata:
       labels:
-        app: frontend
+        app: bouncing-cats-ui
       annotations:
-        ad.datadoghq.com/frontend.logs: '[{"source": "javascript", "service": "frontend"}]'
+        ad.datadoghq.com/bouncing-cats-ui.logs: '[{"source": "javascript", "service": "bouncing-cats-ui"}]'
     spec:
       containers:
-        - name: frontend
-          image: frontend
+        - name: bouncing-cats-ui
+          image: bouncing-cats-ui
           ports:
             - containerPort: 4200
           livenessProbe:

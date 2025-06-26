@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: backend-app
+  name: bouncing-cats-api-app
   namespace: argocd
   annotations:
     argocd-image-updater.argoproj.io/image-list: backend=ghcr.io/colorful12/container-try-backend

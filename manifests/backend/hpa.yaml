@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: backend-hpa
+  name: bouncing-cats-api-hpa
   namespace: taki
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: backend
+    name: bouncing-cats-api
   minReplicas: 1
   maxReplicas: 10
   metrics:

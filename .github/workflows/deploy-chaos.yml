@@ -1,0 +1,66 @@
+name: Deploy Chaos Testing Environment
+
+on:
+  push:
+    branches:
+      - 'nightmare'  # nightmareブランチのみ
+  workflow_dispatch:  # 手動実行も可能
+    inputs:
+      chaos_branch:
+        description: 'Chaos testing branch name'
+        required: true
+        default: 'nightmare'
+
+jobs:
+  deploy-chaos:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/nightmare'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+          
+      - name: Configure kubectl
+        run: |
+          # Kubernetesクラスターへの接続設定
+          # （あなたの環境に合わせて調整してください）
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          
+      - name: Deploy Chaos ArgoCD Applications
+        run: |
+          echo "🔥 Deploying chaos testing environment for branch: ${{ github.ref_name }}"
+          
+          # 破壊テスト用ArgoCDアプリケーションを適用
+          kubectl apply -f manifests/applications/backend-app-chaos.yaml
+          kubectl apply -f manifests/applications/frontend-app-chaos.yaml
+          
+          # ブランチ名を動的に更新
+          kubectl patch application bouncing-cats-api-app-chaos -n argocd \
+            --type='merge' \
+            -p='{"spec":{"source":{"targetRevision":"${{ github.ref_name }}"}}}'
+            
+          kubectl patch application bouncing-cats-ui-app-chaos -n argocd \
+            --type='merge' \
+            -p='{"spec":{"source":{"targetRevision":"${{ github.ref_name }}"}}}'
+          
+          echo "✅ Chaos testing environment deployed successfully"
+          
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for ArgoCD sync..."
+          kubectl wait --for=condition=Synced application/bouncing-cats-api-app-chaos -n argocd --timeout=300s
+          kubectl wait --for=condition=Synced application/bouncing-cats-ui-app-chaos -n argocd --timeout=300s
+          echo "🎯 Deployment completed!"
+          
+      - name: Display chaos environment info
+        run: |
+          echo "🔥 NIGHTMARE TESTING ENVIRONMENT 🔥"
+          echo "Namespace: taki"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Backend: $(kubectl get pods -n taki -l app=bouncing-cats-api -o name)"
+          echo "Frontend: $(kubectl get pods -n taki -l app=bouncing-cats-ui -o name)" 

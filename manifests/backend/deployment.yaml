@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: bouncing-cats-api
   namespace: taki
   labels:
-    app: backend
+    app: bouncing-cats-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: bouncing-cats-api
   template:
     metadata:
       labels:
-        app: backend
+        app: bouncing-cats-api
       annotations:
-        ad.datadoghq.com/backend.logs: '[{"source": "python", "service": "backend"}]'
+        ad.datadoghq.com/bouncing-cats-api.logs: '[{"source": "python", "service": "bouncing-cats-api"}]'
     spec:
       containers:
-        - name: backend
-          image: backend
+        - name: bouncing-cats-api
+          image: bouncing-cats-api
           ports:
             - containerPort: 8000
           env:
@@ -30,7 +30,7 @@ spec:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://datadog-agent.monitoring.svc.cluster.local:4318"
             - name: OTEL_SERVICE_NAME
-              value: "backend"
+              value: "bouncing-cats-api"
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "service.version=1.0.0,deployment.environment=production"
             - name: DD_API_KEY

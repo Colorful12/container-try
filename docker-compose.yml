@@ -1,5 +1,5 @@
 services:
-  backend:
+  bouncing-cats-api:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -7,10 +7,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - CORS_ORIGINS=http://frontend:4200 # backendコンテナから見たfrontendコンテナの名前
+      - CORS_ORIGINS=http://bouncing-cats-ui:4200 # backendコンテナから見たfrontendコンテナの名前
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-  frontend:
+  bouncing-cats-ui:
     build:
       context: ./frontend
       dockerfile: Dockerfile
