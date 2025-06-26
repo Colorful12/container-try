@@ -14,6 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import Resource
+from fastapi import HTTPException
 
 # タイムゾーンを日本時間に設定
 os.environ['TZ'] = 'Asia/Tokyo'
@@ -241,6 +242,31 @@ async def add_cat():
     with tracer.start_as_current_span("rest_add_cat") as span:
         span.set_attribute("api.endpoint", "/add-cat")
         span.set_attribute("api.method", "POST")
+
+        if random.random() < 0.3:
+            error_message = "Intentional 500 error for chaos testing"
+            span.set_attribute("error.intentional", True)
+            span.set_attribute("error.message", error_message)
+            span.record_exception(Exception(error_message))
+            
+            logger.error(
+                "【taki】Intentional 500 error triggered",
+                extra={
+                    "event_type": "intentional_error",
+                    "error_type": "500_error",
+                    "error_message": error_message,
+                    "service": "backend"
+                }
+            )
+            
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "Internal Server Error",
+                    "message": error_message,
+                    "chaos_testing": True
+                }
+            )
 
         # REST APIでも猫を追加できるように
         with tracer.start_as_current_span("cat_generation") as gen_span:
