@@ -4,6 +4,6 @@ resources: # ArgoCDの監視対象にするファイル
   - hpa.yaml
 
 images:
-  - name: backend
+  - name: bouncing-cats-api
     newName: ghcr.io/colorful12/container-try-backend
-    newTag: v1.0.20
+    newTag: v1.0.0

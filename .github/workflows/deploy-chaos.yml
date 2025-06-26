@@ -1,4 +1,4 @@
-name: Deploy Chaos Testing Environment
+name: Build and Deploy Chaos Testing Environment
 
 on:
   push:
@@ -12,14 +12,121 @@ on:
         default: 'nightmare'
 
 jobs:
-  deploy-chaos:
+  build-and-deploy-chaos:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/nightmare'
+
+    permissions:
+      contents: read
+      packages: write # ghcr.io にpushするために必要
     
     steps:
-      - name: Checkout code
+      - name: Checkout source
         uses: actions/checkout@v4
-        
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ベースイメージの事前プル（キャッシュ効率化）
+      - name: Pull base images
+        run: |
+          docker pull python:3.13.4-slim
+          docker pull node:22.15.1
+          echo "Base images pulled successfully"
+
+      # Docker Buildx キャッシュの設定
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: .buildx-cache
+          key: ${{ runner.os }}-buildx-chaos-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-chaos-
+
+      # 依存関係のキャッシュ（バックエンド）
+      - name: Cache backend dependencies
+        uses: actions/cache@v3
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-backend-deps-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-backend-deps-
+
+      # 依存関係のキャッシュ（フロントエンド）
+      - name: Cache frontend dependencies
+        uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-deps-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-deps-
+
+      - name: Cache npm
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # npm キャッシュを事前に作成
+      - name: Setup npm cache
+        working-directory: frontend
+        run: |
+          npm ci --only=production
+          echo "npm cache created successfully"
+
+      - name: Generate chaos version tag
+        id: version
+        run: |
+          # 破壊テスト用のバージョンタグ
+          VERSION="chaos-v1.0.${GITHUB_RUN_NUMBER}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated chaos version: ${VERSION}"
+
+      # 破壊テスト用イメージのビルドとプッシュ
+      - name: Build and push chaos images
+        env: 
+          REPO_OWNER: ${{ github.repository_owner }}
+          DOCKER_DEFAULT_PLATFORM: linux/arm64
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILDKIT_INLINE_CACHE: 1
+        run: |
+          echo "🔥 Building chaos testing images..."
+          
+          # 破壊テスト用バックエンドイメージ
+          docker buildx build \
+            --cache-from type=local,src=.buildx-cache \
+            --cache-to type=local,dest=.buildx-cache,mode=max \
+            --platform linux/arm64 \
+            --push \
+            -t ghcr.io/colorful12/container-try-backend:${VERSION} \
+            -t ghcr.io/colorful12/container-try-backend:chaos-latest \
+            ./backend
+          
+          # 破壊テスト用フロントエンドイメージ
+          docker buildx build \
+            --cache-from type=local,src=.buildx-cache \
+            --cache-to type=local,dest=.buildx-cache,mode=max \
+            --platform linux/arm64 \
+            --push \
+            -t ghcr.io/colorful12/container-try-frontend:${VERSION} \
+            -t ghcr.io/colorful12/container-try-frontend:chaos-latest \
+            ./frontend
+          
+          echo "✅ Chaos images built and pushed successfully!"
+          echo "Pushed images with tags: ${VERSION} and chaos-latest"
+          
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
         with:
@@ -27,9 +134,17 @@ jobs:
           
       - name: Configure kubectl
         run: |
+          # .kubeディレクトリを作成
+          mkdir -p ~/.kube
+          
           # Kubernetesクラスターへの接続設定
-          # （あなたの環境に合わせて調整してください）
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          
+          # 権限を設定
+          chmod 600 ~/.kube/config
+          
+          # 接続テスト
+          kubectl cluster-info
           
       - name: Deploy Chaos ArgoCD Applications
         run: |
@@ -62,5 +177,6 @@ jobs:
           echo "🔥 NIGHTMARE TESTING ENVIRONMENT 🔥"
           echo "Namespace: taki"
           echo "Branch: ${{ github.ref_name }}"
+          echo "Version: ${{ steps.version.outputs.version }}"
           echo "Backend: $(kubectl get pods -n taki -l app=bouncing-cats-api -o name)"
           echo "Frontend: $(kubectl get pods -n taki -l app=bouncing-cats-ui -o name)" 
