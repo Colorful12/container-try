@@ -207,46 +207,45 @@ async def websocket_endpoint(websocket: WebSocket):
                                     }
                                     await websocket.send_text(json.dumps(error_response))
                                     continue
-
-                            # 正常ケース用のトレーサー
-                            with tracer.start_as_current_span(
-                                "cat_creation"
-                            ) as success_span:
-                                success_span.set_attribute("cat.operation", cat_operation)
-                                success_span.set_attribute("cat.position.x", cat_x)
-                                success_span.set_attribute("cat.position.y", cat_y)
-                                
-                                cat_data = {
-                                    "type": "NEW_CAT",
-                                    "id": str(uuid.uuid4()),
-                                    "x": cat_x,
-                                    "y": cat_y
-                                }
-
-                                success_span.set_attribute("cat.id", cat_data["id"])
-                                success_span.set_attribute("cat.creation.status", "success")
-
-                                logger.info(
-                                    "【taki】Adding new cat",
-                                    extra={
-                                        "event_type": "cat_added",
-                                        "cat_id": cat_data["id"],
-                                        "cat_position": {
-                                            "x": cat_data["x"],
-                                            "y": cat_data["y"]
-                                        },
-                                        "service": "backend"
-                                    }
-                                )
-
+                            else:
                                 with tracer.start_as_current_span(
-                                    "broadcast_message"
-                                ) as broadcast_span:
-                                    broadcast_span.set_attribute(
-                                        "broadcast.recipients",
-                                        len(manager.active_connections)
+                                    "cat_creation"
+                                ) as success_span:
+                                    success_span.set_attribute("cat.operation", cat_operation)
+                                    success_span.set_attribute("cat.position.x", cat_x)
+                                    success_span.set_attribute("cat.position.y", cat_y)
+                                    
+                                    cat_data = {
+                                        "type": "NEW_CAT",
+                                        "id": str(uuid.uuid4()),
+                                        "x": cat_x,
+                                        "y": cat_y
+                                    }
+
+                                    success_span.set_attribute("cat.id", cat_data["id"])
+                                    success_span.set_attribute("cat.creation.status", "success")
+
+                                    logger.info(
+                                        "【taki】Adding new cat",
+                                        extra={
+                                            "event_type": "cat_added",
+                                            "cat_id": cat_data["id"],
+                                            "cat_position": {
+                                                "x": cat_data["x"],
+                                                "y": cat_data["y"]
+                                            },
+                                            "service": "backend"
+                                        }
                                     )
-                                    await manager.broadcast(json.dumps(cat_data))
+
+                                    with tracer.start_as_current_span(
+                                        "broadcast_message"
+                                    ) as broadcast_span:
+                                        broadcast_span.set_attribute(
+                                            "broadcast.recipients",
+                                            len(manager.active_connections)
+                                        )
+                                        await manager.broadcast(json.dumps(cat_data))
                     except json.JSONDecodeError as e:
                         logger.error(
                             "【taki】JSON decode error in WebSocket message",
