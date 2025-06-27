@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: bouncing-cats-api-app-chaos
+  name: bouncing-cats-api-c
   namespace: argocd
   annotations:
     argocd-image-updater.argoproj.io/image-list: bouncing-cats-api=ghcr.io/colorful12/container-try-backend
     argocd-image-updater.argoproj.io/bouncing-cats-api.update-strategy: semver
-    argocd-image-updater.argoproj.io/bouncing-cats-api.allow-tags: regexp:^v1\.0\.
+    argocd-image-updater.argoproj.io/bouncing-cats-api.allow-tags: regexp:^chaos-v1\.0\.
 spec:
   project: default
   source:
