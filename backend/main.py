@@ -135,7 +135,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    logger.info("【taki】Health check: OK")
+    logger.info("【taki】Health check: OK!")
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
