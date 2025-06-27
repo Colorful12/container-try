@@ -174,7 +174,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             cat_x = message.get("x", 100)
                             cat_y = message.get("y", 100)
 
-                            if random.random() <= 1.0:
+                            if random.random() > 1.0:
                                 # エラーケース用のトレーサー
                                 with tracer.start_as_current_span(
                                     "cat_creation_miss"
@@ -189,7 +189,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                     error_span.set_attribute("error.message", error_message)
                                     error_span.record_exception(Exception(error_message))
                                     
-                                    logger.error(
+                                    logger.info(
                                         "【taki】Intentional WebSocket 500 error triggered",
                                         extra={
                                             "event_type": "intentional_websocket_error",
@@ -199,13 +199,13 @@ async def websocket_endpoint(websocket: WebSocket):
                                         }
                                     )
                                     
-                                    error_response = {
-                                        "type": "ERROR",
-                                        "error": "Internal Server Error",
-                                        "message": error_message,
-                                        "chaos_testing": True
-                                    }
-                                    await websocket.send_text(json.dumps(error_response))
+                                    # error_response = {
+                                    #     "type": "ERROR",
+                                    #     "error": "Internal Server Error",
+                                    #     "message": error_message,
+                                    #     "chaos_testing": True
+                                    # }
+                                    # await websocket.send_text(json.dumps(error_response))
                                     continue
                             else:
                                 with tracer.start_as_current_span(
