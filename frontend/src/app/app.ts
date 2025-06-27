@@ -78,7 +78,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.initWebSocket();
     this.startAnimation();
-    this.startMemoryLeak();
+    // this.startMemoryLeak();
   }
 
   ngOnDestroy() {
@@ -95,7 +95,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     setInterval(() => {
       this.createMemoryLeak();
-    }, 2000); // 2秒ごとにメモリリーク
+    }, 2000);
   }
 
   private createMemoryLeak() {
