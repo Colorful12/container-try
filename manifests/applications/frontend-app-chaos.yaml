@@ -6,17 +6,15 @@ metadata:
   annotations:
     argocd-image-updater.argoproj.io/image-list: bouncing-cats-ui=ghcr.io/colorful12/container-try-frontend
     argocd-image-updater.argoproj.io/bouncing-cats-ui.update-strategy: semver
-    argocd-image-updater.argoproj.io/bouncing-cats-ui.allow-tags: regexp:^chaos-.*
+    argocd-image-updater.argoproj.io/bouncing-cats-ui.allow-tags: regexp:^v1\.0\.
 spec:
   project: default
   source:
     repoURL: https://github.com/colorful12/container-try
-    targetRevision: nightmare  # 悪夢の破壊テスト用ブランチ
+    targetRevision: nightmare
     path: manifests/frontend
   destination:
     server: https://kubernetes.default.svc
-    namespace: taki  # 既存のtaki namespaceを使用
+    namespace: taki
   syncPolicy:
-    automated:
-      prune: false   # 破壊状態を保持するため無効化
-      selfHeal: false # 破壊状態を観察するため無効化
+    automated: {} 
