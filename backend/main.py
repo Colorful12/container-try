@@ -156,14 +156,14 @@ async def websocket_endpoint(websocket: WebSocket):
                         message = json.loads(data)
 
                         msg_span.set_attribute("message.type", message.get("type"))
-                        # msg_span.set_attribute("message.data", json.dumps(message))
+                        msg_span.set_attribute("message.data", json.dumps(message))
 
                         logger.info(
                             "【taki】Received WebSocket message",
                             extra={
                                 "event_type": "websocket_message",
                                 "message_type": message.get("type"),
-                                # "message_data": message,
+                                "message_data": message,
                                 "service": "backend"
                             }
                         )
@@ -206,7 +206,14 @@ async def websocket_endpoint(websocket: WebSocket):
                                     #     "chaos_testing": True
                                     # }
                                     # await websocket.send_text(json.dumps(error_response))
-                                    continue
+                                    raise HTTPException(
+                                        status_code=500,
+                                        detail={
+                                            "error": "Internal Server Error",
+                                            "message": error_message,
+                                            "chaos_testing": True
+                                        }
+                                    )
                             else:
                                 with tracer.start_as_current_span(
                                     "cat_creation"
