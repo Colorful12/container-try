@@ -31,29 +31,24 @@ logger = logging.getLogger(__name__)
 
 # OTel初期化
 def setup_otel():
-    # リソース設定
     resource = Resource.create({
         "service.name": os.getenv("OTEL_SERVICE_NAME", "backend"),
         "service.version": "1.0.0",
         "deployment.environment": os.getenv("DD_ENV", "production")
     })
 
-    # TracerProvider設定
+
     provider = TracerProvider(resource=resource)
 
-    # OTLPエクスポーター設定
     otlp_endpoint = os.getenv(
         "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318"
     )
-    # OTLPエクスポーターには完全なエンドポイントURL（/v1/tracesを含む）を指定
     full_endpoint = f"{otlp_endpoint}/v1/traces"
     otlp_exporter = OTLPSpanExporter(endpoint=full_endpoint)    
+    
     logger.info(f"【taki】OTLP exporter configured with endpoint: {full_endpoint}")
 
-    # BatchSpanProcessorでエクスポーターを追加
     provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-
-    # グローバルTracerProviderを設定
     trace.set_tracer_provider(provider)
 
     logger.info(f"【taki】OTel initialized with endpoint: {otlp_endpoint}")
@@ -174,22 +169,25 @@ async def websocket_endpoint(websocket: WebSocket):
                         )
 
                         if message.get("type") == "ADD_CAT":
-                            with tracer.start_as_current_span(
-                                "cat_creation"
-                            ) as cat_span:
-                                cat_span.set_attribute("cat.operation", "add")
-                                cat_span.set_attribute(
-                                    "cat.position.x", message.get("x", 100)
-                                )
-                                cat_span.set_attribute(
-                                    "cat.position.y", message.get("y", 100)
-                                )
+                            # 共通の属性を設定
+                            cat_operation = "add"
+                            cat_x = message.get("x", 100)
+                            cat_y = message.get("y", 100)
 
-                                if random.random() < 0.3:
+                            if random.random() <= 1.0:
+                                # エラーケース用のトレーサー
+                                with tracer.start_as_current_span(
+                                    "cat_creation_miss"
+                                ) as error_span:
+                                    error_span.set_attribute("cat.operation", cat_operation)
+                                    error_span.set_attribute("cat.position.x", cat_x)
+                                    error_span.set_attribute("cat.position.y", cat_y)
+                                    error_span.set_attribute("error.intentional", True)
+                                    error_span.set_attribute("error.type", "chaos_testing")
+                                    
                                     error_message = "Intentional WebSocket 500 error for chaos testing"
-                                    cat_span.set_attribute("error.intentional", True)
-                                    cat_span.set_attribute("error.message", error_message)
-                                    cat_span.record_exception(Exception(error_message))
+                                    error_span.set_attribute("error.message", error_message)
+                                    error_span.record_exception(Exception(error_message))
                                     
                                     logger.error(
                                         "【taki】Intentional WebSocket 500 error triggered",
@@ -210,14 +208,23 @@ async def websocket_endpoint(websocket: WebSocket):
                                     await websocket.send_text(json.dumps(error_response))
                                     continue
 
+                            # 正常ケース用のトレーサー
+                            with tracer.start_as_current_span(
+                                "cat_creation"
+                            ) as success_span:
+                                success_span.set_attribute("cat.operation", cat_operation)
+                                success_span.set_attribute("cat.position.x", cat_x)
+                                success_span.set_attribute("cat.position.y", cat_y)
+                                
                                 cat_data = {
                                     "type": "NEW_CAT",
                                     "id": str(uuid.uuid4()),
-                                    "x": message.get("x", 100),
-                                    "y": message.get("y", 100)
+                                    "x": cat_x,
+                                    "y": cat_y
                                 }
 
-                                cat_span.set_attribute("cat.id", cat_data["id"])
+                                success_span.set_attribute("cat.id", cat_data["id"])
+                                success_span.set_attribute("cat.creation.status", "success")
 
                                 logger.info(
                                     "【taki】Adding new cat",
@@ -293,37 +300,41 @@ async def add_cat():
         span.set_attribute("api.method", "POST")
 
         if random.random() < 0.3:
-            error_message = "Intentional 500 error for chaos testing"
-            span.set_attribute("error.intentional", True)
-            span.set_attribute("error.message", error_message)
-            span.record_exception(Exception(error_message))
-            
-            logger.error(
-                "【taki】Intentional 500 error triggered",
-                extra={
-                    "event_type": "intentional_error",
-                    "error_type": "500_error",
-                    "error_message": error_message,
-                    "service": "backend"
-                }
-            )
-            
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error": "Internal Server Error",
-                    "message": error_message,
-                    "chaos_testing": True
-                }
-            )
+            # エラーケース用のトレーサー
+            with tracer.start_as_current_span("rest_cat_creation_miss") as error_span:
+                error_span.set_attribute("error.intentional", True)
+                error_span.set_attribute("error.type", "chaos_testing")
+                
+                error_message = "Intentional 500 error for chaos testing"
+                error_span.set_attribute("error.message", error_message)
+                error_span.record_exception(Exception(error_message))
+                
+                logger.error(
+                    "【taki】Intentional 500 error triggered",
+                    extra={
+                        "event_type": "intentional_error",
+                        "error_type": "500_error",
+                        "error_message": error_message,
+                        "service": "backend"
+                    }
+                )
+                
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "error": "Internal Server Error",
+                        "message": error_message,
+                        "chaos_testing": True
+                    }
+                )
 
-        # REST APIでも猫を追加できるように
-        with tracer.start_as_current_span("cat_generation") as gen_span:
+        # 正常ケース用のトレーサー
+        with tracer.start_as_current_span("rest_cat_creation") as success_span:
             x_pos = random.randint(50, 750)
             y_pos = random.randint(50, 550)
 
-            gen_span.set_attribute("cat.position.x", x_pos)
-            gen_span.set_attribute("cat.position.y", y_pos)
+            success_span.set_attribute("cat.position.x", x_pos)
+            success_span.set_attribute("cat.position.y", y_pos)
 
             cat_data = {
                 "type": "NEW_CAT",
@@ -332,7 +343,8 @@ async def add_cat():
                 "y": y_pos   # ランダムなY座標
             }
 
-            span.set_attribute("cat.id", cat_data["id"])
+            success_span.set_attribute("cat.id", cat_data["id"])
+            success_span.set_attribute("cat.creation.status", "success")
 
             logger.info(
                 "【taki】Adding cat via REST API",
