@@ -14,18 +14,17 @@ RUN npm ci --cache /tmp/npm-cache && \
 # ソースコードコピー
 COPY . .
 
-# 本番用イメージ
-FROM node:22.15.1-slim
+# 本番用ビルド
+RUN npm run build
 
-WORKDIR /app
+# Nginxで静的ファイルを配信
+FROM nginx:alpine
 
-# 依存関係のみをコピー
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
+# ビルドされたファイルをコピー
+COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/html
 
-# アプリケーションコードをコピー
-COPY . .
+# Nginx設定
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# 開発サーバーを起動
 EXPOSE 4200
-CMD ["npm", "start", "--", "--host", "0.0.0.0"]
+CMD ["nginx", "-g", "daemon off;"]

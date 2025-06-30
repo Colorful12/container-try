@@ -305,36 +305,6 @@ async def add_cat():
         span.set_attribute("api.endpoint", "/add-cat")
         span.set_attribute("api.method", "POST")
 
-        if random.random() < 0.3:
-            # エラーケース用のトレーサー
-            with tracer.start_as_current_span("rest_cat_creation_miss") as error_span:
-                error_span.set_attribute("error.intentional", True)
-                error_span.set_attribute("error.type", "chaos_testing")
-                
-                error_message = "Intentional 500 error for chaos testing"
-                error_span.set_attribute("error.message", error_message)
-                error_span.record_exception(Exception(error_message))
-                
-                logger.error(
-                    "【taki】Intentional 500 error triggered",
-                    extra={
-                        "event_type": "intentional_error",
-                        "error_type": "500_error",
-                        "error_message": error_message,
-                        "service": "backend"
-                    }
-                )
-                
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "error": "Internal Server Error",
-                        "message": error_message,
-                        "chaos_testing": True
-                    }
-                )
-
-        # 正常ケース用のトレーサー
         with tracer.start_as_current_span("rest_cat_creation") as success_span:
             x_pos = random.randint(50, 750)
             y_pos = random.randint(50, 550)
@@ -345,8 +315,8 @@ async def add_cat():
             cat_data = {
                 "type": "NEW_CAT",
                 "id": str(uuid.uuid4()),
-                "x": x_pos,  # ランダムなX座標
-                "y": y_pos   # ランダムなY座標
+                "x": x_pos,
+                "y": y_pos
             }
 
             success_span.set_attribute("cat.id", cat_data["id"])
