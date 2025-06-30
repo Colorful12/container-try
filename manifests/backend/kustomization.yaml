@@ -7,4 +7,4 @@ resources: # ArgoCDの監視対象にするファイル
 images:
   - name: bouncing-cats-api
     newName: ghcr.io/colorful12/container-try-backend
-    newTag: chaos-v1.0.27
+    newTag: chaos-v1.0.28
