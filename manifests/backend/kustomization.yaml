@@ -2,8 +2,9 @@ resources: # ArgoCDの監視対象にするファイル
   - datadog-secret.yaml
   - deployment.yaml
   - hpa.yaml
+  - service.yaml
 
 images:
   - name: bouncing-cats-api
     newName: ghcr.io/colorful12/container-try-backend
-    newTag: chaos-v1.0.25
+    newTag: chaos-v1.0.26

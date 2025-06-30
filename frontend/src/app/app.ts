@@ -110,7 +110,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private initWebSocket() {
-    this.ws = new WebSocket('ws://localhost:8000/ws');
+    // NodePort経由でバックエンドに接続
+    this.ws = new WebSocket('ws://localhost:30080/ws');
 
     this.ws.onopen = () => {
       console.log('【taki】WebSocket connected');
@@ -145,7 +146,7 @@ export class AppComponent implements OnInit, OnDestroy {
       size: 30 + Math.random() * 20
     };
     this.cats.push(cat);
-    this.createMemoryLeak();
+    // this.createMemoryLeak();
   }
 
   addCat() {
@@ -167,14 +168,14 @@ export class AppComponent implements OnInit, OnDestroy {
   addLoadTestCats() {
     console.log('【taki】🔥 Starting Load Test: 100 cats');
     for (let i = 0; i < 100; i++) {
-      setTimeout(() => this.addCat(), i * 50); // より速く追加
+      setTimeout(() => this.addCat(), i * 50);
     }
   }
 
   addExtremeLoadTest() {
     console.log('【taki】💥 Starting Extreme Load Test: 500 cats');
     for (let i = 0; i < 500; i++) {
-      setTimeout(() => this.addCat(), i * 20); // 非常に速く追加
+      setTimeout(() => this.addCat(), i * 20);
     }
   }
 

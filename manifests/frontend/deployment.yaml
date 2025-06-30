@@ -27,6 +27,6 @@ spec:
               path: /health
               port: 4200
             initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
+            periodSeconds: 300
+            timeoutSeconds: 15
             failureThreshold: 3

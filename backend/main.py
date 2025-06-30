@@ -239,7 +239,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                     memory_leak_counter += 1
                                     leak_data = {
                                         "id": f"websocket_memory_hog_{memory_leak_counter}",
-                                        "data": "Y" * 50000,
+                                        "data": "cat" * 500000,
                                         "timestamp": time.time(),
                                         "cat_id": cat_data["id"],
                                         "metadata": {
