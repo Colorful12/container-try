@@ -9,6 +9,6 @@ export class ApiService {
     private http = inject(HttpClient);
 
     getHealth(): Observable<{ status: string }> {
-        return this.http.get<{ status: string }>('http://localhost:8000/health');
+        return this.http.get<{ status: string }>('/api/health');
     }
 }

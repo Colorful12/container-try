@@ -1,7 +1,8 @@
 resources:
   - deployment.yaml
+  - service.yaml
 
 images:
   - name: bouncing-cats-ui
     newName: ghcr.io/colorful12/container-try-frontend
-    newTag: chaos-v1.0.26
+    newTag: chaos-v1.0.27

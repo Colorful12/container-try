@@ -110,8 +110,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private initWebSocket() {
-    // NodePort経由でバックエンドに接続
-    this.ws = new WebSocket('ws://localhost:30080/ws');
+    // 同じドメイン経由でバックエンドに接続（Nginxプロキシ使用）
+    this.ws = new WebSocket('ws://localhost:4200/ws');
 
     this.ws.onopen = () => {
       console.log('【taki】WebSocket connected');

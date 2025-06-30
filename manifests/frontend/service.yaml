@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bouncing-cats-ui
+  namespace: taki
+  labels:
+    app: bouncing-cats-ui
+spec:
+  selector:
+    app: bouncing-cats-ui
+  ports:
+    - protocol: TCP
+      port: 4200
+      targetPort: 4200
+      nodePort: 30420
+  type: NodePort 
