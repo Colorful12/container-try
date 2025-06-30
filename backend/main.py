@@ -17,20 +17,140 @@ from opentelemetry.sdk.resources import Resource
 from fastapi import HTTPException
 from datetime import datetime
 import time
+import signal
+import sys
+import atexit
+import psutil
+import threading
+import gc
 
 # タイムゾーンを日本時間に設定
 os.environ['TZ'] = 'Asia/Tokyo'
+
+# グローバル変数
+memory_leak_data = []
+memory_leak_counter = 0
+shutdown_requested = False
+monitoring_thread = None
+
+# メモリ監視とクラッシュ検知
+def memory_monitor():
+    """メモリ使用量を監視し、危険な状態を検知"""
+    while not shutdown_requested:
+        try:
+            process = psutil.Process()
+            memory_info = process.memory_info()
+            memory_percent = process.memory_percent()
+            
+            # メモリ使用量が80%を超えた場合に警告
+            if memory_percent > 80:
+                logger.warning(
+                    "【taki】High memory usage detected",
+                    extra={
+                        "event_type": "high_memory_usage",
+                        "memory_percent": memory_percent,
+                        "memory_rss_mb": memory_info.rss / 1024 / 1024,
+                        "memory_vms_mb": memory_info.vms / 1024 / 1024,
+                        "service": "backend",
+                        "timestamp": datetime.now().isoformat(),
+                        "severity": "warning"
+                    }
+                )
+            
+            # メモリ使用量が95%を超えた場合に緊急ログ
+            if memory_percent > 95:
+                logger.critical(
+                    "【taki】Critical memory usage - application may crash soon",
+                    extra={
+                        "event_type": "critical_memory_usage",
+                        "memory_percent": memory_percent,
+                        "memory_rss_mb": memory_info.rss / 1024 / 1024,
+                        "memory_vms_mb": memory_info.vms / 1024 / 1024,
+                        "memory_leak_count": len(memory_leak_data),
+                        "service": "backend",
+                        "timestamp": datetime.now().isoformat(),
+                        "severity": "critical"
+                    }
+                )
+                
+                # 強制的にガベージコレクションを実行
+                gc.collect()
+                
+                # メモリリークデータを一部クリア（緊急時）
+                if len(memory_leak_data) > 100:
+                    memory_leak_data.clear()
+                    logger.warning(
+                        "【taki】Emergency memory cleanup performed",
+                        extra={
+                            "event_type": "emergency_memory_cleanup",
+                            "service": "backend",
+                            "timestamp": datetime.now().isoformat(),
+                            "severity": "warning"
+                        }
+                    )
+            
+            time.sleep(10)  # 10秒ごとに監視
+            
+        except Exception as e:
+            logger.error(
+                "【taki】Memory monitoring error",
+                extra={
+                    "event_type": "memory_monitoring_error",
+                    "error": str(e),
+                    "service": "backend",
+                    "timestamp": datetime.now().isoformat(),
+                    "severity": "error"
+                }
+            )
+            time.sleep(30)  # エラー時は30秒待機
+
+# 終了時のログ出力
+def log_shutdown(reason: str):
+    global shutdown_requested, monitoring_thread
+    if not shutdown_requested:
+        shutdown_requested = True
+        
+        # 監視スレッドを停止
+        if monitoring_thread and monitoring_thread.is_alive():
+            monitoring_thread.join(timeout=5)
+        
+        logger.critical(
+            "【taki】Application shutting down",
+            extra={
+                "event_type": "app_shutdown",
+                "shutdown_reason": reason,
+                "service": "backend",
+                "memory_leak_count": len(memory_leak_data),
+                "active_connections": len(manager.active_connections) if 'manager' in globals() else 0,
+                "timestamp": datetime.now().isoformat(),
+                "severity": "critical"
+            }
+        )
+
+# シグナルハンドラー
+def signal_handler(signum, frame):
+    signal_name = signal.Signals(signum).name
+    log_shutdown(f"signal_{signal_name}")
+    sys.exit(0)
+
+# シグナルを登録
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
+# 終了時の処理を登録
+atexit.register(lambda: log_shutdown("atexit"))
 
 # ログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s JST - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(),  # 標準出力
+        logging.FileHandler('/tmp/app.log')  # ファイル出力（Datadog Agentが収集）
+    ]
 )
 logger = logging.getLogger(__name__)
-
-memory_leak_data = []
-memory_leak_counter = 0
 
 # OTel初期化
 def setup_otel():
@@ -99,12 +219,15 @@ class ConnectionManager:
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-        logger.info(
+        logger.warning(
             "【taki】WebSocket connection disconnected",
             extra={
                 "event_type": "websocket_disconnect",
                 "total_connections": len(self.active_connections),
-                "service": "backend"
+                "service": "backend",
+                "disconnect_reason": "client_disconnect",
+                "timestamp": datetime.now().isoformat(),
+                "severity": "warning"
             }
         )
 
@@ -112,20 +235,39 @@ class ConnectionManager:
         await websocket.send_text(message)
 
     async def broadcast(self, message: str):
+        disconnected_connections = []
         for connection in self.active_connections:
             try:
                 await connection.send_text(message)
             except Exception as e:
-                # 接続が切れた場合は削除
-                self.active_connections.remove(connection)
+                # 接続が切れた場合は削除対象に追加
+                disconnected_connections.append(connection)
                 logger.error(
-                    "【taki】Failed to send message to WebSocket",
+                    "【taki】Failed to send message to WebSocket - connection will be removed",
                     extra={
-                        "event_type": "websocket_error",
+                        "event_type": "websocket_connection_failed",
                         "error": str(e),
-                        "service": "backend"
+                        "error_type": type(e).__name__,
+                        "service": "backend",
+                        "timestamp": datetime.now().isoformat(),
+                        "severity": "error",
+                        "total_connections_before": len(self.active_connections)
                     }
                 )
+        
+        # 切断された接続を一括削除
+        for connection in disconnected_connections:
+            self.active_connections.remove(connection)
+            logger.warning(
+                "【taki】WebSocket connection removed due to send failure",
+                extra={
+                    "event_type": "websocket_connection_removed",
+                    "service": "backend",
+                    "timestamp": datetime.now().isoformat(),
+                    "severity": "warning",
+                    "total_connections_after": len(self.active_connections)
+                }
+            )
 
 
 manager = ConnectionManager()
@@ -234,7 +376,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                                     success_span.set_attribute("cat.id", cat_data["id"])
                                     success_span.set_attribute("cat.creation.status", "success")
-
+                                    if random.random() > 0.7:
+                                        time.sleep(5)
                                     global memory_leak_counter
                                     memory_leak_counter += 1
                                     leak_data = {
@@ -314,7 +457,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 extra={
                     "event_type": "websocket_error",
                     "error": str(e),
-                    "service": "backend"
+                    "service": "backend",
+                    "error_type": "websocket_exception",
+                    "timestamp": datetime.now().isoformat(),
+                    "severity": "error"
                 }
             )
             manager.disconnect(websocket)
@@ -370,10 +516,18 @@ async def add_cat():
 
 @app.on_event("startup")
 async def startup_event():
+    global monitoring_thread
+    
+    # メモリ監視スレッドを開始
+    monitoring_thread = threading.Thread(target=memory_monitor, daemon=True)
+    monitoring_thread.start()
+    
     logger.info(
         "【taki】Backend application started successfully",
         extra={
             "event_type": "app_startup_complete",
-            "service": "backend"
+            "service": "backend",
+            "memory_monitoring": "enabled",
+            "timestamp": datetime.now().isoformat()
         }
     )
