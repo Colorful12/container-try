@@ -66,7 +66,7 @@ def memory_monitor():
                         "memory_percent": memory_percent,
                         "memory_rss_mb": memory_info.rss / 1024 / 1024,
                         "memory_vms_mb": memory_info.vms / 1024 / 1024,
-                        "memory_leak_count": len(memory_leak_data),
+                        # "memory_leak_count": len(memory_leak_data),
                         "service": "backend",
                         "timestamp": datetime.now().isoformat(),
                         "severity": "critical"
@@ -378,21 +378,21 @@ async def websocket_endpoint(websocket: WebSocket):
                                     success_span.set_attribute("cat.creation.status", "success")
                                     if random.random() > 0.7:
                                         time.sleep(5)
-                                    global memory_leak_counter
-                                    memory_leak_counter += 1
-                                    leak_data = {
-                                        "id": f"websocket_memory_hog_{memory_leak_counter}",
-                                        "data": "cat" * 500000,
-                                        "timestamp": time.time(),
-                                        "cat_id": cat_data["id"],
-                                        "metadata": {
-                                            "x": cat_x,
-                                            "y": cat_y,
-                                            "counter": memory_leak_counter,
-                                            "source": "websocket"
-                                        }
-                                    }
-                                    memory_leak_data.append(leak_data)
+                                    #global memory_leak_counter
+                                    #memory_leak_counter += 1
+                                    #leak_data = {
+                                    #    "id": f"websocket_memory_hog_{memory_leak_counter}",
+                                    #    "data": "cat" * 500000,
+                                    #    "timestamp": time.time(),
+                                    #    "cat_id": cat_data["id"],
+                                    #    "metadata": {
+                                    #        "x": cat_x,
+                                    #        "y": cat_y,
+                                    #        "counter": memory_leak_counter,
+                                    #        "source": "websocket"
+                                    #    }
+                                    #}
+                                    #memory_leak_data.append(leak_data)
 
                                     logger.info(
                                         "【taki】Adding new cat",
@@ -403,8 +403,8 @@ async def websocket_endpoint(websocket: WebSocket):
                                                 "x": cat_data["x"],
                                                 "y": cat_data["y"]
                                             },
-                                            "memory_leak_count": len(memory_leak_data),
-                                            "memory_leak_size_mb": len(memory_leak_data) * 0.05,  # 50KB = 0.05MB
+                                            #"memory_leak_count": len(memory_leak_data),
+                                            #"memory_leak_size_mb": len(memory_leak_data) * 0.05,  # 50KB = 0.05MB
                                             "service": "backend"
                                         }
                                     )
