@@ -24,8 +24,7 @@ class MemoryHog {
 
   constructor(id: string) {
     this.id = id;
-    // 10MBのデータを生成（メモリリーク用）
-    this.data = new Array(1000000).fill('A').map((_, i) => ({
+    this.data = new Array(1000).fill('A').map((_, i) => ({
       id: `${id}_${i}`,
       data: 'X'.repeat(100), // 100文字の文字列
       timestamp: Date.now(),
