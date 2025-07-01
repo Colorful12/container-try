@@ -5,4 +5,4 @@ resources:
 images:
   - name: bouncing-cats-ui
     newName: ghcr.io/colorful12/container-try-frontend
-    newTag: chaos-v1.0.29
+    newTag: chaos-v1.0.30
